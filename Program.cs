@@ -1,26 +1,29 @@
+using Microsoft.EntityFrameworkCore;
+using MyPortfolioBackend.Data;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-builder.Services.AddControllers();
+// Connection string ophalen uit appsettings.json
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
-// Swagger services toevoegen
+// DbContext koppelen aan SQL Server
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseSqlServer(connectionString));
+
+builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-    // Swagger UI inschakelen voor ontwikkeling
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
 app.UseHttpsRedirection();
-
 app.UseAuthorization();
-
 app.MapControllers();
 
 app.Run();
