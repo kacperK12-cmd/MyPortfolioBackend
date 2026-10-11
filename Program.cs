@@ -6,8 +6,10 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Connectionstring ophalen uit configuratie.
 var connectionString =
-    builder.Configuration.GetConnectionString("DefaultConnection");
-
+    builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? throw new InvalidOperationException(
+        "Connectionstring 'DefaultConnection' ontbreekt.");
+        
 // DbContext koppelen aan SQL Server.
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(connectionString));
