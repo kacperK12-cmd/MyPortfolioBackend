@@ -13,11 +13,4 @@ public class ApplicationDbContext : DbContext
     public DbSet<Project> Projects { get; set; }
     public DbSet<Blogpost> Blogposts { get; set; }
 
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-    {
-        if (!optionsBuilder.IsConfigured)
-        {
-            optionsBuilder.UseSqlServer("Server=localhost;Database=MyPortfolioDb;User Id=sa;Password=JouwSterkeWachtwoord123!;TrustServerCertificate=True;");
-        }
-    }
 }
