@@ -1,6 +1,11 @@
 @MyPortfolioBackend_HostAddress = http://localhost:5145
 
-GET {{MyPortfolioBackend_HostAddress}}/weatherforecast/
+GET {{MyPortfolioBackend_HostAddress}}/api/projects
+Accept: application/json
+
+###
+
+GET {{MyPortfolioBackend_HostAddress}}/api/blogposts
 Accept: application/json
 
 ###
