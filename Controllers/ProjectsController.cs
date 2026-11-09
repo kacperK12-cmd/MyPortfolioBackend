@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MyPortfolioBackend.Dtos;
 using MyPortfolioBackend.Services;
@@ -36,21 +37,16 @@ public class ProjectsController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<ProjectDto>> Create(
-        CreateProjectDto dto)
+    [Authorize(Roles = "Editor,Admin")]
+    public async Task<ActionResult<ProjectDto>> Create(CreateProjectDto dto)
     {
         var project = await _service.CreateAsync(dto);
-
-        return CreatedAtAction(
-            nameof(GetById),
-            new { id = project.Id },
-            project);
+        return CreatedAtAction(nameof(GetById), new { id = project.Id }, project);
     }
 
     [HttpPut("{id:int}")]
-    public async Task<ActionResult<ProjectDto>> Update(
-        int id,
-        CreateProjectDto dto)
+    [Authorize(Roles = "Editor,Admin")]
+    public async Task<ActionResult<ProjectDto>> Update(int id, CreateProjectDto dto)
     {
         var project = await _service.UpdateAsync(id, dto);
 
@@ -63,6 +59,7 @@ public class ProjectsController : ControllerBase
     }
 
     [HttpDelete("{id:int}")]
+    [Authorize(Roles = "Editor,Admin")]
     public async Task<IActionResult> Delete(int id)
     {
         var deleted = await _service.DeleteAsync(id);

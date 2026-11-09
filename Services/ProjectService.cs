@@ -53,9 +53,7 @@ public class ProjectService
     }
 
     // Een project wijzigen. Null betekent: niet gevonden.
-    public async Task<ProjectDto?> UpdateAsync(
-        int id,
-        CreateProjectDto dto)
+    public async Task<ProjectDto?> UpdateAsync(int id, CreateProjectDto dto)
     {
         var project = await _context.Projects.FindAsync(id);
 
@@ -91,7 +89,7 @@ public class ProjectService
         return true;
     }
 
-    // Centrale omzetting van database-entiteit naar uitvoer-DTO.
+    // Zet een database-entiteit om naar een DTO voor de API.
     private static ProjectDto ToDto(Project project)
     {
         return new ProjectDto

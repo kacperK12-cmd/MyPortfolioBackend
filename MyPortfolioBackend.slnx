@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="MyPortfolioBackend.csproj" />
+  <Project Path="MyPortfolioBackend.Tests/MyPortfolioBackend.Tests.csproj" />
+</Solution>
