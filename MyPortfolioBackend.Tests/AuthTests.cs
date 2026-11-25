@@ -51,7 +51,7 @@ public class AuthTests : IClassFixture<TestFactory>
     }
 
     [Fact]
-    public async Task Login_JuisteGegevens_Geeft200()
+    public async Task Login_JuisteGegevens_Geeft200EnCookie()
     {
         // Arrange
         var client = _factory.CreateClient();
@@ -62,6 +62,10 @@ public class AuthTests : IClassFixture<TestFactory>
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        // De API geeft een Identity-authenticatiecookie terug.
+        Assert.True(response.Headers.TryGetValues("Set-Cookie", out var cookies));
+        Assert.Contains(cookies!, c => c.StartsWith(".AspNetCore.Identity.Application="));
     }
 
     [Fact]
@@ -73,6 +77,37 @@ public class AuthTests : IClassFixture<TestFactory>
 
         // Act
         var response = await client.PostAsJsonAsync("/api/auth/login", account);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    private record MeAntwoord(string Email, List<string> Rollen);
+
+    [Fact]
+    public async Task Me_AlsEditor_Geeft200MetRolEditor()
+    {
+        // Arrange
+        var client = await _factory.LoginAlsAsync("editor@test.nl");
+
+        // Act
+        var response = await client.GetAsync("/api/auth/me");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var me = await response.Content.ReadFromJsonAsync<MeAntwoord>();
+        Assert.Equal("editor@test.nl", me!.Email);
+        Assert.Contains("Editor", me.Rollen);
+    }
+
+    [Fact]
+    public async Task Me_ZonderLogin_Geeft401()
+    {
+        // Arrange
+        var client = _factory.CreateClient();
+
+        // Act
+        var response = await client.GetAsync("/api/auth/me");
 
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
