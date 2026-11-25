@@ -70,7 +70,36 @@ public class BlogpostsTests : IClassFixture<TestFactory>
         Assert.Equal("Bestaande blogpost", resultaat!.Titel);
     }
 
+    [Fact]
+    public async Task GetById_OnbekendId_Geeft404()
+    {
+        // Arrange
+        var client = _factory.CreateClient();
+
+        // Act
+        var response = await client.GetAsync("/api/blogposts/99999");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
     // ---------- POST ----------
+
+    [Fact]
+    public async Task Post_ZonderLogin_Geeft401EnSlaatNietsOp()
+    {
+        // Arrange
+        var client = _factory.CreateClient();
+        using var db = _factory.MaakDb();
+        var aantalVoor = db.Blogposts.Count();
+
+        // Act
+        var response = await client.PostAsJsonAsync("/api/blogposts", NieuweBlogpost());
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal(aantalVoor, db.Blogposts.Count());
+    }
 
     [Fact]
     public async Task Post_AlsGast_Geeft403EnSlaatNietsOp()
@@ -108,14 +137,31 @@ public class BlogpostsTests : IClassFixture<TestFactory>
         Assert.NotNull(db.Blogposts.Find(aangemaakt.Id)); // staat echt in de database
     }
 
+    [Fact]
+    public async Task Post_OngeldigeInvoer_Geeft400()
+    {
+        // Arrange
+        var client = await _factory.LoginAlsAsync("editor@test.nl");
+        var ongeldig = NieuweBlogpost();
+        ongeldig.Titel = ""; // Titel is verplicht
+
+        // Act
+        var response = await client.PostAsJsonAsync("/api/blogposts", ongeldig);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
     // ---------- PUT ----------
 
-    [Fact]
-    public async Task Put_AlsEditor_Geeft200EnWijzigtBlogpost()
+    [Theory]
+    [InlineData("editor@test.nl")]
+    [InlineData("admin@test.nl")]
+    public async Task Put_AlsEditorOfAdmin_Geeft200EnWijzigtBlogpost(string email)
     {
         // Arrange
         var blogpost = VoegBlogpostToe();
-        var client = await _factory.LoginAlsAsync("editor@test.nl");
+        var client = await _factory.LoginAlsAsync(email);
         var wijziging = NieuweBlogpost();
         wijziging.Titel = "Gewijzigde titel";
 
@@ -124,18 +170,72 @@ public class BlogpostsTests : IClassFixture<TestFactory>
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var resultaat = await response.Content.ReadFromJsonAsync<BlogpostDto>();
+        Assert.Equal("Gewijzigde titel", resultaat!.Titel);
+
         using var db = _factory.MaakDb();
         Assert.Equal("Gewijzigde titel", db.Blogposts.Find(blogpost.Id)!.Titel); // echt gewijzigd
     }
 
-    // ---------- DELETE ----------
-
     [Fact]
-    public async Task Delete_AlsEditor_Geeft204EnVerwijdertBlogpost()
+    public async Task Put_ZonderLogin_Geeft401EnWijzigtNiets()
     {
         // Arrange
         var blogpost = VoegBlogpostToe();
+        var client = _factory.CreateClient();
+        var wijziging = NieuweBlogpost();
+        wijziging.Titel = "Mag niet";
+
+        // Act
+        var response = await client.PutAsJsonAsync($"/api/blogposts/{blogpost.Id}", wijziging);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        using var db = _factory.MaakDb();
+        Assert.Equal("Bestaande blogpost", db.Blogposts.Find(blogpost.Id)!.Titel); // niet gewijzigd
+    }
+
+    [Fact]
+    public async Task Put_AlsGast_Geeft403EnWijzigtNiets()
+    {
+        // Arrange
+        var blogpost = VoegBlogpostToe();
+        var client = await _factory.LoginAlsGastAsync();
+        var wijziging = NieuweBlogpost();
+        wijziging.Titel = "Mag niet";
+
+        // Act
+        var response = await client.PutAsJsonAsync($"/api/blogposts/{blogpost.Id}", wijziging);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        using var db = _factory.MaakDb();
+        Assert.Equal("Bestaande blogpost", db.Blogposts.Find(blogpost.Id)!.Titel); // niet gewijzigd
+    }
+
+    [Fact]
+    public async Task Put_OnbekendId_Geeft404()
+    {
+        // Arrange
         var client = await _factory.LoginAlsAsync("editor@test.nl");
+
+        // Act
+        var response = await client.PutAsJsonAsync("/api/blogposts/99999", NieuweBlogpost());
+
+        // Assert
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    // ---------- DELETE ----------
+
+    [Theory]
+    [InlineData("editor@test.nl")]
+    [InlineData("admin@test.nl")]
+    public async Task Delete_AlsEditorOfAdmin_Geeft204EnVerwijdertBlogpost(string email)
+    {
+        // Arrange
+        var blogpost = VoegBlogpostToe();
+        var client = await _factory.LoginAlsAsync(email);
 
         // Act
         var response = await client.DeleteAsync($"/api/blogposts/{blogpost.Id}");
@@ -144,6 +244,38 @@ public class BlogpostsTests : IClassFixture<TestFactory>
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
         using var db = _factory.MaakDb();
         Assert.Null(db.Blogposts.Find(blogpost.Id)); // echt verwijderd
+    }
+
+    [Fact]
+    public async Task Delete_ZonderLogin_Geeft401EnVerwijdertNiets()
+    {
+        // Arrange
+        var blogpost = VoegBlogpostToe();
+        var client = _factory.CreateClient();
+
+        // Act
+        var response = await client.DeleteAsync($"/api/blogposts/{blogpost.Id}");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        using var db = _factory.MaakDb();
+        Assert.NotNull(db.Blogposts.Find(blogpost.Id)); // bestaat nog
+    }
+
+    [Fact]
+    public async Task Delete_AlsGast_Geeft403EnVerwijdertNiets()
+    {
+        // Arrange
+        var blogpost = VoegBlogpostToe();
+        var client = await _factory.LoginAlsGastAsync();
+
+        // Act
+        var response = await client.DeleteAsync($"/api/blogposts/{blogpost.Id}");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        using var db = _factory.MaakDb();
+        Assert.NotNull(db.Blogposts.Find(blogpost.Id)); // bestaat nog
     }
 
     [Fact]
