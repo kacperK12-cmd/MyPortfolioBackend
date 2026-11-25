@@ -158,12 +158,14 @@ public class ProjectsTests : IClassFixture<TestFactory>
 
     // ---------- PUT ----------
 
-    [Fact]
-    public async Task Put_AlsEditor_Geeft200EnWijzigtProject()
+    [Theory]
+    [InlineData("editor@test.nl")]
+    [InlineData("admin@test.nl")]
+    public async Task Put_AlsEditorOfAdmin_Geeft200EnWijzigtProject(string email)
     {
         // Arrange
         var project = VoegProjectToe();
-        var client = await _factory.LoginAlsAsync("editor@test.nl");
+        var client = await _factory.LoginAlsAsync(email);
         var wijziging = NieuwProject();
         wijziging.Titel = "Gewijzigde titel";
 
@@ -172,8 +174,47 @@ public class ProjectsTests : IClassFixture<TestFactory>
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var resultaat = await response.Content.ReadFromJsonAsync<ProjectDto>();
+        Assert.Equal("Gewijzigde titel", resultaat!.Titel);
+
         using var db = _factory.MaakDb();
         Assert.Equal("Gewijzigde titel", db.Projects.Find(project.Id)!.Titel); // echt gewijzigd
+    }
+
+    [Fact]
+    public async Task Put_ZonderLogin_Geeft401EnWijzigtNiets()
+    {
+        // Arrange
+        var project = VoegProjectToe();
+        var client = _factory.CreateClient();
+        var wijziging = NieuwProject();
+        wijziging.Titel = "Mag niet";
+
+        // Act
+        var response = await client.PutAsJsonAsync($"/api/projects/{project.Id}", wijziging);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        using var db = _factory.MaakDb();
+        Assert.Equal("Bestaand project", db.Projects.Find(project.Id)!.Titel); // niet gewijzigd
+    }
+
+    [Fact]
+    public async Task Put_AlsGast_Geeft403EnWijzigtNiets()
+    {
+        // Arrange
+        var project = VoegProjectToe();
+        var client = await _factory.LoginAlsGastAsync();
+        var wijziging = NieuwProject();
+        wijziging.Titel = "Mag niet";
+
+        // Act
+        var response = await client.PutAsJsonAsync($"/api/projects/{project.Id}", wijziging);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        using var db = _factory.MaakDb();
+        Assert.Equal("Bestaand project", db.Projects.Find(project.Id)!.Titel); // niet gewijzigd
     }
 
     [Fact]
@@ -191,12 +232,14 @@ public class ProjectsTests : IClassFixture<TestFactory>
 
     // ---------- DELETE ----------
 
-    [Fact]
-    public async Task Delete_AlsAdmin_Geeft204EnVerwijdertProject()
+    [Theory]
+    [InlineData("editor@test.nl")]
+    [InlineData("admin@test.nl")]
+    public async Task Delete_AlsEditorOfAdmin_Geeft204EnVerwijdertProject(string email)
     {
         // Arrange
         var project = VoegProjectToe();
-        var client = await _factory.LoginAlsAsync("admin@test.nl");
+        var client = await _factory.LoginAlsAsync(email);
 
         // Act
         var response = await client.DeleteAsync($"/api/projects/{project.Id}");
@@ -221,5 +264,34 @@ public class ProjectsTests : IClassFixture<TestFactory>
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         using var db = _factory.MaakDb();
         Assert.NotNull(db.Projects.Find(project.Id)); // bestaat nog
+    }
+
+    [Fact]
+    public async Task Delete_AlsGast_Geeft403EnVerwijdertNiets()
+    {
+        // Arrange
+        var project = VoegProjectToe();
+        var client = await _factory.LoginAlsGastAsync();
+
+        // Act
+        var response = await client.DeleteAsync($"/api/projects/{project.Id}");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        using var db = _factory.MaakDb();
+        Assert.NotNull(db.Projects.Find(project.Id)); // bestaat nog
+    }
+
+    [Fact]
+    public async Task Delete_OnbekendId_Geeft404()
+    {
+        // Arrange
+        var client = await _factory.LoginAlsAsync("editor@test.nl");
+
+        // Act
+        var response = await client.DeleteAsync("/api/projects/99999");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 }
