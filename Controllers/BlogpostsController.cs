@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using MyPortfolioBackend.Authorization;
 using MyPortfolioBackend.Dtos;
 using MyPortfolioBackend.Services;
 
@@ -37,7 +38,7 @@ public class BlogpostsController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "Editor,Admin")]
+    [Authorize(Policy = Policies.CanEdit)]
     public async Task<ActionResult<BlogpostDto>> Create(CreateBlogpostDto dto)
     {
         var blogpost = await _service.CreateAsync(dto);
@@ -45,7 +46,7 @@ public class BlogpostsController : ControllerBase
     }
 
     [HttpPut("{id:int}")]
-    [Authorize(Roles = "Editor,Admin")]
+    [Authorize(Policy = Policies.CanEdit)]
     public async Task<ActionResult<BlogpostDto>> Update(int id, CreateBlogpostDto dto)
     {
         var blogpost = await _service.UpdateAsync(id, dto);
@@ -59,7 +60,7 @@ public class BlogpostsController : ControllerBase
     }
 
     [HttpDelete("{id:int}")]
-    [Authorize(Roles = "Editor,Admin")]
+    [Authorize(Policy = Policies.CanEdit)]
     public async Task<IActionResult> Delete(int id)
     {
         var deleted = await _service.DeleteAsync(id);

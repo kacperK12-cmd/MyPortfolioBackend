@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using MyPortfolioBackend.Authorization;
 using MyPortfolioBackend.Data;
 using MyPortfolioBackend.Services;
 
@@ -28,6 +29,10 @@ builder.Services.ConfigureApplicationCookie(options =>
     };
 });
 
+// Policy: alleen Editor en Admin mogen schrijven.
+builder.Services.AddAuthorizationBuilder()
+    .AddPolicy(Policies.CanEdit, policy => policy.RequireRole("Editor", "Admin"));
+
 builder.Services.AddScoped<ProjectService>();
 builder.Services.AddScoped<BlogpostService>();
 
@@ -39,6 +44,9 @@ var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
 {
+    // Lokaal: rollen en Editor/Admin-gebruikers uit user-secrets aanmaken.
+    await DbSeeder.SeedAsync(app.Services, app.Configuration);
+
     app.UseSwagger();
     app.UseSwaggerUI();
 }
