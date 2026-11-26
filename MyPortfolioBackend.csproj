@@ -25,4 +25,11 @@
     <None Remove="MyPortfolioBackend.Tests/**" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Remove="frontend/**" />
+    <Content Remove="frontend/**" />
+    <EmbeddedResource Remove="frontend/**" />
+    <None Remove="frontend/**" />
+  </ItemGroup>
+
 </Project>
